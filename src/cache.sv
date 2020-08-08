@@ -62,7 +62,7 @@ logic [N_WORDS_PER_LINE*32-1:0]     cl_wrepl_q;
 logic                               wb_req_n;
 logic                               wb_req_q;
 
-localparam TAG_SIZE = 32-5;
+localparam TAG_SIZE = 32-2-$clog2(N_WORDS_PER_LINE);
 
 lsu lsu_i(
     .clk        ( clk       ),
@@ -170,7 +170,7 @@ begin
         if(cl_dirty[repl_line] && wb_req_q) begin
             lsu_write = 1'b1;
             lsu_we = 4'hf;
-            lsu_addr = {cl_tags[repl_line], read_cnt[2:0], 2'b0};
+            lsu_addr = {cl_tags[repl_line], read_cnt[$clog2(N_WORDS_PER_LINE)-1:0], 2'b0};
             /* verilator lint_off WIDTH */
             su_data = cl_rline[repl_line] >> 32*(read_cnt[2:0]);
             /* verilator lint_on WIDTH */
@@ -181,7 +181,7 @@ begin
             end
         end else begin
             lsu_load = 1'b1;
-            lsu_addr = {addr_i[31:$clog2(N_WORDS_PER_LINE)+2], read_cnt[2:0], 2'b0};
+            lsu_addr = {addr_i[31:$clog2(N_WORDS_PER_LINE)+2], read_cnt[$clog2(N_WORDS_PER_LINE)-1:0], 2'b0};
             if(lsu_valid) begin
                 /* verilator lint_off WIDTH */
                 cl_wrepl_n = cl_wrepl_q | {480'b0, lu_data} << (32*read_cnt);
