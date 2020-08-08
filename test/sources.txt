@@ -1,0 +1,15 @@
+cache_tb.sv
+
+../src/cache.sv
+../src/cache_line.sv
+ram.sv
+wb_ram_wrapper.sv
+
+../../load_store_unit/src/load_unit.sv
+../../load_store_unit/src/store_unit.sv
+../../load_store_unit/src/lsu.sv
+
+../../wishbone/src/wb_slave.sv
+
+-I../../wishbone/includes
+-I../includes
