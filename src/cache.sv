@@ -155,8 +155,8 @@ begin
     end
 end
 
-    // Writing back cacheline into storate and
-    // reading new cachline from storage
+// Writing back cacheline into storate and
+// reading new cachline from storage
 always_comb
 begin
     lsu_we = 'b0;
