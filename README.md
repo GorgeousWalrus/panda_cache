@@ -1,2 +1,2 @@
 # caches
-simple WB cache, WorkInProgress
+simple, fully associative write-back cache
