@@ -49,16 +49,24 @@ logic [N_LINES-1:0][TAG_SIZE-1:0]               cl_tags;
 logic [N_LINES-1:0]                             cl_dirty;
 logic [N_LINES-1:0]                             cl_valid;
 
-// Control and other
+// Replace request and replace complete signal
 logic                               repl_req;
 logic                               repl_valid;
-logic                               incr_read_cnt;
+
+// Selector for cl to read or replace
 logic [$clog2(N_LINES)-1:0]         valid_line;
 logic [$clog2(N_LINES)-1:0]         repl_line;
+
+// Keep track of amount of reads (to fill the cl)
 logic [$clog2(N_WORDS_PER_LINE):0]  read_cnt;
+logic                               incr_read_cnt;
+
+// Data to be placed into cl
 logic [N_WORDS_PER_LINE*32-1:0]     cl_w;
 logic [N_WORDS_PER_LINE*32-1:0]     cl_wrepl_n;
 logic [N_WORDS_PER_LINE*32-1:0]     cl_wrepl_q;
+
+// Signal to keep track of write-back progress (not used unless cl is dirty)
 logic                               wb_req_n;
 logic                               wb_req_q;
 
@@ -103,10 +111,11 @@ begin
     repl_req = 1'b0;
 
     if(read_i || write_i) begin
-        repl_req = 1'b1;
+        repl_req = 1'b1; // generally, we need to replace unless we find the corresponding cl
 
         for(int i = 0; i < N_LINES; i = i + 1) begin
             if(cl_valid[i] && cl_tags[i] == addr_i[31:32-TAG_SIZE]) begin
+                // Corresponding cl found! no need to replace / load new data
                 valid_line = i[$clog2(N_LINES)-1:0];
                 repl_req = 1'b0;
             end
@@ -115,6 +124,7 @@ begin
 end
 
 /* verilator lint_off WIDTH */
+// Clear one word in cl to write into it later (TODO: error when not writing a complete word - rest gets cleared anyhow)
 assign cl_w = (cl_rline[valid_line] & (~(512'hffffffff << 32*addr_i[$clog2(N_WORDS_PER_LINE)+1:2])));
 /* verilator lint_on WIDTH */
 
@@ -128,10 +138,12 @@ begin
 
 
     if(!repl_req && (write_i || read_i)) begin
+        // The data is already in the cache and we can perform a read/write
         valid_o = 1'b1;
         if(write_i) begin
             cl_we[valid_line] = 1'b1;
             /* verilator lint_off WIDTH */
+            // write into cl
             case(we_i)
                 4'b1111:
                     cl_wline = cl_w | ({480'b0, data_i} << 32*(addr_i[$clog2(N_WORDS_PER_LINE)+1:2]));
@@ -149,6 +161,7 @@ begin
             /* verilator lint_on WIDTH */
         end
     end else if(repl_req && repl_valid) begin
+        // The replacement is ready, store it into the cl
         cl_we[repl_line] = 1'b1;
         cl_repl[repl_line] = 1'b1;
         cl_wline = cl_wrepl_q;
@@ -168,6 +181,7 @@ begin
     wb_req_n = wb_req_q;
     if(repl_req) begin
         if(cl_dirty[repl_line] && wb_req_q) begin
+            // First write the cl back into memory before replacing it if it was dirty
             lsu_write = 1'b1;
             lsu_we = 4'hf;
             lsu_addr = {cl_tags[repl_line], read_cnt[$clog2(N_WORDS_PER_LINE)-1:0], 2'b0};
@@ -180,6 +194,7 @@ begin
                     wb_req_n = 1'b0;
             end
         end else begin
+            // Fill the cl with new data
             lsu_load = 1'b1;
             lsu_addr = {addr_i[31:$clog2(N_WORDS_PER_LINE)+2], read_cnt[$clog2(N_WORDS_PER_LINE)-1:0], 2'b0};
             if(lsu_valid) begin
