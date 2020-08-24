@@ -31,6 +31,8 @@ module cache #(
     wb_bus_t.master         wb_bus
 );
 
+localparam TAG_SIZE = 32-2-$clog2(N_WORDS_PER_LINE);
+
 // LSU
 logic           lsu_load;
 logic           lsu_write;
@@ -69,8 +71,6 @@ logic [N_WORDS_PER_LINE*32-1:0]     cl_wrepl_q;
 // Signal to keep track of write-back progress (not used unless cl is dirty)
 logic                               wb_req_n;
 logic                               wb_req_q;
-
-localparam TAG_SIZE = 32-2-$clog2(N_WORDS_PER_LINE);
 
 lsu lsu_i(
     .clk        ( clk       ),
