@@ -33,6 +33,9 @@ module cache #(
 
 localparam TAG_SIZE = 32-2-$clog2(N_WORDS_PER_LINE);
 
+// Output registers
+logic [31:0]    data;
+
 // LSU
 logic           lsu_load;
 logic           lsu_write;
@@ -128,14 +131,16 @@ end
 assign cl_w = (cl_rline[valid_line] & (~(512'hffffffff << 32*addr_i[$clog2(N_WORDS_PER_LINE)+1:2])));
 /* verilator lint_on WIDTH */
 
+assign data_o = data;
+
 always_comb
 begin
     // Reading and writing to cachline (possiblie within one cycle)
-    valid_o = 1'b0;
-    cl_we = 'b0;
+    valid_o  = 1'b0;
+    cl_we    = 'b0;
     cl_wline = 'b0;
-    cl_repl = 'b0;
-
+    cl_repl  = 'b0;
+    data     = 'b0;
 
     if(!repl_req && (write_i || read_i)) begin
         // The data is already in the cache and we can perform a read/write
@@ -157,7 +162,7 @@ begin
             /* verilator lint_on WIDTH */
         end else begin
             /* verilator lint_off WIDTH */
-            data_o = cl_rline[valid_line] >> 32*(addr_i[$clog2(N_WORDS_PER_LINE)+1:2]);
+            data = cl_rline[valid_line] >> 32*(addr_i[$clog2(N_WORDS_PER_LINE)+1:2]);
             /* verilator lint_on WIDTH */
         end
     end else if(repl_req && repl_valid) begin
@@ -172,13 +177,16 @@ end
 // reading new cachline from storage
 always_comb
 begin
-    lsu_we = 'b0;
-    lsu_load = 1'b0;
-    lsu_write = 1'b0;
-    repl_valid = 1'b0;
-    incr_read_cnt = 1'b0;
-    cl_wrepl_n = cl_wrepl_q;
-    wb_req_n = wb_req_q;
+    lsu_we          = 'b0;
+    lsu_load        = 1'b0;
+    lsu_write       = 1'b0;
+    repl_valid      = 1'b0;
+    incr_read_cnt   = 1'b0;
+    cl_wrepl_n      = cl_wrepl_q;
+    wb_req_n        = wb_req_q;
+    lsu_addr        = 'b0;
+    su_data         = 'b0;
+
     if(repl_req) begin
         if(cl_dirty[repl_line] && wb_req_q) begin
             // First write the cl back into memory before replacing it if it was dirty
