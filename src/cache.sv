@@ -234,12 +234,13 @@ begin
 
         wb_req_q <= wb_req_n;
         cl_wrepl_q <= 'b0;
-        read_cnt <= 'b0;
         if(repl_req) begin
             cl_wrepl_q <= cl_wrepl_n;
             if(incr_read_cnt)
                 read_cnt <= read_cnt + 1;
         end
+        if(read_cnt > 8)
+            read_cnt <= 'b0;
     end
 end
 
